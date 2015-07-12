@@ -12,7 +12,7 @@ body {
 h1 {
   background-color: #4D4847;
   color: #CCCCCC;
-  font-family: serif, sans-serif;
+  font-family: 'Raleway', serif, sans-serif;
   margin-top: 0px;
   padding: 0.3em;
 }
@@ -20,4 +20,13 @@ h1 {
 p {
   background-color: #4D4847;
   color: #CCCCCC;
+  font-family: 'Lato', sans-serif;
+}
+
+.sidebar {
+  border: solid;
+  border-width: 1px;
+  border-color: blue;
+  border-radius: 5px;
+  float: left;
 }
