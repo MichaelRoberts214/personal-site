@@ -1,36 +1,145 @@
-// D3 for topDetail.html
+// d3 code for Top Detail directive
 
+
+
+// var width = window.innerWidth * 0.75; //960;
+// var height = 560;
 var width = 500;
 var height = 200;
+// Padding variable for separation between same-color nodes.
+var padding = 10;
+// Cluster padding variable for separation between different-color nodes.
+var clusterPadding = 10;
+var maxRadius = 5;
 
-var svg = d3.select("svg");
+var data = [10, 10, 10];
 
-var circle = svg.selectAll("circle")
-  .data([10,10,10]);
 
+// Variable n is the total number of nodes.
+var n = data.length;
+// Variable m is the number of distinct clusters
+var m = 1;
+
+var color = d3.scale.category20c()
+    .domain(d3.range(m));
+
+// The largest node for each cluster.
+var clusters = new Array(m);
+
+var nodes = d3.range(n).map(function() {
+  var i = Math.floor(Math.random() * m); // cluster number
+  var r = 5; // set radius here
+  var d = {cluster: i, radius: r, rw: 999.9};
+  if (!clusters[i] || (r > clusters[i].radius)) clusters[i] = d;
+  return d;
+});
+
+// put data into nodes
+// for (var i = 0; i < nodes.length; i++) {
+//   if(i === 0) {
+//     nodes[i].radius = 95;
+//   }
+//   nodes[i].id = data[i].id;
+//   nodes[i].channelId = data[i].channelId;
+//   nodes[i].name = data[i].name;
+//   nodes[i].createdAt = data[i].createdAt;
+//   nodes[i].updatedAt = data[i].updatedAt;
+// }
+
+// Use d3's pack layout to initialize node positions.
+d3.layout.pack()
+    .sort(null)
+    .size([width, height])
+    .children(function(d) { return d.values; })
+    .value(function(d) { return d.radius * d.radius; })
+    .nodes({values: d3.nest()
+      .key(function(d) { return d.cluster; })
+      .entries(nodes)});
+
+// Apply force to each node.
 var force = d3.layout.force()
-      .nodes(circle)
-      .size([width, height])
-      .gravity(.02)
-      .charge(-50)
-      .on("tick", tick)
-      .start();
+    .nodes(nodes)
+    .size([width, height])
+    .gravity(.02)
+    .charge(-50)
+    .on("tick", tick)
+    .start();
 
-var cirlceEnter = circle.enter().append("circle");
+// Create SVG containing element for graph nodes.
+var svg = d3.select("svg");
+// var svg = d3.select(el).append('svg')
+//     .attr('class', 'd3')
+//     .attr('width', window.innerWidth * 0.75)
+//     .attr('height', height)
+//     .attr('style', 'background: AliceBlue');
 
-circle.attr("cx", function(d, i) { return i * 100 + 30; })
-  .attr("cy", function(d, i) { return i * 70 + 10; })
-  .attr("r", function(d, i) { return 5; });
+// Create a group for node circles.
+svg.append('g')
+    .attr('class', 'd3-points');
 
-/****** Handle ticks and collisions ******/
+// Create a group for node text links.
+// svg.append('g')
+//     .attr('class', 'd3-texts');
+
+// Create selectors for respective groups.
+// var g = d3.select(el).selectAll('.d3-points');
+var g = d3.select("svg").selectAll('.d3-points');
+// var gt = d3.select(el).selectAll('.d3-texts');
+
+// var text = gt.selectAll('.d3-text');
+
+var node = g.selectAll(".d3-points")
+    .data(nodes)
+    .enter().append("circle")
+    .style("fill", function(d) { return color(d.cluster); }) // set color with this
+    .call(force.drag);
+
+// Add text and link to circles
+// var texts = text
+//   .data(nodes)
+//   .enter()
+//   .append("text")
+//   .attr("x", function(d) { return d.x; })
+//   .attr("y", function(d) { return d.y; })
+//   .attr("z", 11)
+//   .attr('class', 'd3-text')
+//   .text( function (d) { return d.name; })
+//   .attr("font-family", "roboto")
+//   .attr("font-size", "25px")
+//   .attr("fill", "#ECF0F1")
+//   .attr("stroke", "#333333")
+//   .attr("stroke-width", "0.5px")
+//   .attr("cursor", "pointer")
+//   .attr("id", function(d) {return d.id})
+//   .style("text-anchor", "middle")
+//   .on("click", function(d) {
+//     NodeResourceActions.setNodeId(d.id);
+//   })
+//   .call(force.drag);
+
+node.transition()
+    .duration(750)
+    .delay(function(d, i) { return i * 5; })
+    .attrTween("r", function(d) {
+      var i = d3.interpolate(0, d.radius);
+      return function(t) { return d.radius = i(t); };
+    });
+
+// texts.transition()
+//     .duration(750)
+//     .delay(function(d, i) { return i * 5; });
 
 function tick(e) {
-  // was node
-  circle
-      /*.each(cluster(10 * e.alpha * e.alpha))*/
+  node
+      .each(cluster(10 * e.alpha * e.alpha))
       .each(collide(.5))
       .attr("cx", function(d) { return d.x; })
       .attr("cy", function(d) { return d.y; });
+  // texts
+  //     .each(cluster(10 * e.alpha * e.alpha))
+  //     .each(collide(.5))
+  //     .attr("x", function(d) { return d.x; })
+  //     .attr("y", function(d) { return d.y; });
 };
 
 // Move d to be adjacent to the cluster node.
@@ -53,16 +162,10 @@ function cluster(alpha) {
 };
 
 // Resolves collisions between d and all other circles.
-
-
-// issue: because circle is just 10, 10, 10
-// there is no x and y tracking
-// this is why you need that nodes setup
-
 function collide(alpha) {
-  var quadtree = d3.geom.quadtree(circle);
+  var quadtree = d3.geom.quadtree(nodes);
   return function(d) {
-    var r = d.r + 5, //+ maxRadius + Math.max(padding, clusterPadding),
+    var r = d.radius + maxRadius + Math.max(padding, clusterPadding),
         nx1 = d.x - r,
         nx2 = d.x + r,
         ny1 = d.y - r,
@@ -72,10 +175,9 @@ function collide(alpha) {
         var x = d.x - quad.point.x,
             y = d.y - quad.point.y,
             l = Math.sqrt(x * x + y * y),
-            ra = /*d.radius*/ 10 + quad.point.r; //+ (d.cluster === quad.point.cluster ? padding : clusterPadding);
-        if (l < ra) {
-          console.log('asdf');
-          l = (l - ra) / l * alpha;
+            r = d.radius + quad.point.radius + (d.cluster === quad.point.cluster ? padding : clusterPadding);
+        if (l < r) {
+          l = (l - r) / l * alpha;
           d.x -= x *= l;
           d.y -= y *= l;
           quad.point.x += x;
