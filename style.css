@@ -30,3 +30,14 @@ p {
   border-radius: 5px;
   float: left;
 }
+
+#top-detail {
+  display: block;
+  background-color: #CCCCCC;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+circle {
+  fill: red;
+}
